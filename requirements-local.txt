@@ -1,0 +1,5 @@
+# Full install for running the AI model on your own computer (EMBEDDING_BACKEND=local).
+# The server (Render) uses the lighter requirements.txt instead.
+-r requirements.txt
+sentence-transformers==3.0.1
+scikit-learn==1.5.1

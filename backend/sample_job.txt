@@ -1,0 +1,4 @@
+We are looking for a Backend Engineer to build and maintain APIs for our hiring platform.
+Requirements: Python, FastAPI, REST API, PostgreSQL, Docker, AWS, Git, Linux.
+Nice to have: Kubernetes, React, agile experience. Strong communication skills.
+You will design endpoints, optimize database queries and deploy services to the cloud.

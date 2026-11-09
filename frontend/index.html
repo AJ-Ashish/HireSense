@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HireSense</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root {
+    --paper: #FAFAF8; --panel: #FFFFFF; --ink: #14171F; --ink-soft: #565B66;
+    --line: #DDD8CE; --hr-accent: #2B4C7E; --hr-accent-soft: #E7EDF5;
+    --cand-accent: #1F8A70; --cand-accent-soft: #E4F3EE;
+    --warn: #B8862B; --warn-soft: #FAF1E0; --danger: #B5493D; --danger-soft: #F5E6E4;
+    --accent: var(--hr-accent); --accent-soft: var(--hr-accent-soft);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; font-size: 14px; }
+  h1, h2, h3, .serif { font-family: 'Fraunces', serif; }
+  .mono { font-family: 'Space Mono', monospace; }
+  body.candidate-mode { --accent: var(--cand-accent); --accent-soft: var(--cand-accent-soft); }
+  a { color: inherit; }
+
+  /* ---- Auth screen ---- */
+  #auth-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--paper);
+  }
+  .auth-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 36px; width: 380px; max-width: 90vw;
+  }
+  .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .auth-mark {
+    width: 32px; height: 32px; border-radius: 8px; background: var(--hr-accent);
+    display: flex; align-items: center; justify-content: center; color: white;
+    font-family: 'Fraunces', serif; font-weight: 700;
+  }
+  .auth-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px; }
+  .role-tabs { display: flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; margin-bottom: 18px; }
+  .role-tabs button {
+    flex: 1; border: none; background: transparent; padding: 9px; border-radius: 6px;
+    font-weight: 600; font-size: 13px; color: var(--ink-soft); cursor: pointer;
+  }
+  .role-tabs button.active { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px; color: var(--ink-soft); }
+  .form-group input {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px;
+    font-family: inherit; font-size: 14px;
+  }
+  .form-group input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .auth-switch { text-align: center; margin-top: 16px; font-size: 13px; color: var(--ink-soft); }
+  .auth-switch span { color: var(--hr-accent); font-weight: 600; cursor: pointer; }
+  .auth-error {
+    background: var(--danger-soft); color: var(--danger); padding: 10px 12px;
+    border-radius: 7px; font-size: 13px; margin-bottom: 14px; display: none;
+  }
+
+  /* ---- App shell ---- */
+  #app-shell { display: none; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; padding: 14px 24px;
+    background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 7px; background: var(--accent);
+    display: flex; align-items: center; justify-content: center; color: white;
+    font-family: 'Fraunces', serif; font-weight: 700; font-size: 16px;
+  }
+  .brand-name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; }
+  .user-chip { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-soft); }
+  .user-avatar {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px;
+  }
+  .logout-btn { background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 12.5px; text-decoration: underline; }
+
+  .layout { display: flex; min-height: calc(100vh - 61px); }
+  .sidebar { width: 210px; background: var(--panel); border-right: 1px solid var(--line); padding: 20px 12px; flex-shrink: 0; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px;
+    color: var(--ink-soft); font-weight: 500; cursor: pointer; margin-bottom: 2px; font-size: 13.5px;
+  }
+  .nav-item:hover { background: var(--paper); color: var(--ink); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+  .main { flex: 1; padding: 28px 32px; max-width: 1100px; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .page-header { margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .page-header h1 { font-size: 25px; margin: 0 0 4px; font-weight: 600; }
+  .page-header p { margin: 0; color: var(--ink-soft); font-size: 14px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .panel-title { font-weight: 600; font-size: 15px; margin: 0 0 14px; display: flex; justify-content: space-between; align-items: center; }
+
+  .stat-row { display: flex; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-card { flex: 1; min-width: 140px; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 16px 18px; }
+  .stat-num { font-family: 'Space Mono', monospace; font-size: 26px; font-weight: 700; line-height: 1; }
+  .stat-label { color: var(--ink-soft); font-size: 12px; margin-top: 6px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: white;
+    border: none; padding: 10px 18px; border-radius: 7px; font-weight: 600; font-size: 13px;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-outline { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-danger { background: var(--danger); }
+  .btn-block { width: 100%; justify-content: center; }
+
+  .job-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .job-row:last-child { border-bottom: none; }
+  .job-title { font-weight: 600; font-size: 14.5px; margin-bottom: 3px; cursor: pointer; }
+  .job-title:hover { text-decoration: underline; }
+  .job-meta { color: var(--ink-soft); font-size: 12.5px; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 11.5px; font-weight: 600; background: var(--cand-accent-soft); color: var(--cand-accent); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-soft); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 12px 10px; border-bottom: 1px solid var(--line); font-size: 13.5px; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .score-cell { display: flex; align-items: center; gap: 8px; }
+  .score-num { font-family: 'Space Mono', monospace; font-weight: 700; min-width: 34px; }
+  .score-bar-bg { width: 60px; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .score-bar-fill { height: 100%; background: var(--accent); }
+  .skill-tag { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 10.5px; margin: 1px 3px 1px 0; font-weight: 600; }
+  .skill-match { background: var(--cand-accent-soft); color: var(--cand-accent); }
+  .skill-miss { background: var(--warn-soft); color: var(--warn); }
+  .status-pill { padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+  .status-shortlisted { background: var(--cand-accent-soft); color: var(--cand-accent); }
+  .status-review { background: #F0EEE8; color: var(--ink-soft); }
+  .status-rejected { background: var(--danger-soft); color: var(--danger); }
+  select.status-select { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 12px; font-family: inherit; }
+
+  .job-card { border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 12px; background: var(--panel); }
+  .job-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .job-card h3 { margin: 0 0 4px; font-size: 16px; }
+  .job-card .company { color: var(--ink-soft); font-size: 13px; margin-bottom: 10px; }
+  .job-card p.desc { color: var(--ink-soft); font-size: 13px; margin: 6px 0 12px; white-space: pre-wrap; }
+  .match-chip { background: var(--accent-soft); color: var(--accent); font-family: 'Space Mono', monospace; font-weight: 700; font-size: 13px; padding: 5px 11px; border-radius: 7px; white-space: nowrap; }
+
+  .feedback-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .feedback-item:last-child { border-bottom: none; }
+
+  .two-col { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } .sidebar { display: none; } .main { padding: 20px 16px; } }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--ink-soft); }
+  .empty-state .icon { font-size: 30px; margin-bottom: 10px; }
+
+  .chat-bubble {
+    max-width: 75%; padding: 10px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.5;
+    white-space: pre-wrap;
+  }
+  .chat-bubble-user { align-self: flex-end; background: var(--accent); color: white; border-bottom-right-radius: 3px; }
+  .chat-bubble-bot { align-self: flex-start; background: var(--paper); border: 1px solid var(--line); border-bottom-left-radius: 3px; }
+  .chat-bubble-loading { align-self: flex-start; color: var(--ink-soft); font-size: 13px; font-style: italic; }
+
+  textarea, input[type=text] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px;
+    font-family: inherit; font-size: 14px;
+  }
+  textarea { min-height: 110px; resize: vertical; }
+
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(20,23,31,0.4);
+    align-items: center; justify-content: center; z-index: 50;
+  }
+  .modal-backdrop.active { display: flex; }
+  .modal { background: var(--panel); border-radius: 12px; padding: 26px; width: 460px; max-width: 90vw; }
+  .modal h3 { margin: 0 0 16px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: var(--ink); color: white;
+    padding: 12px 18px; border-radius: 8px; font-size: 13.5px; z-index: 100;
+    opacity: 0; transform: translateY(10px); transition: all 0.25s ease; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .file-drop {
+    border: 2px dashed var(--line); border-radius: 8px; padding: 20px; text-align: center;
+    cursor: pointer; font-size: 13px; color: var(--ink-soft);
+  }
+  .file-drop:hover { border-color: var(--accent); }
+  .file-drop input { display: none; }
+  .spinner-inline {
+    display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Bulk screening + roadmap ---- */
+  .bulk-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+  .bulk-controls .form-group { margin: 0; flex: 1; min-width: 200px; }
+  .bulk-note { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 12px; }
+  .bulk-err { font-size: 12.5px; color: var(--warn); padding: 3px 0; }
+  .rm-summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .rm-pill { background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 4px 12px; font-size: 12.5px; font-weight: 600; }
+  .rm-step { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 10px; background: var(--panel); }
+  .rm-step:last-child { margin-bottom: 0; }
+  .rm-step-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .rm-skill { font-weight: 600; font-size: 15px; text-transform: capitalize; }
+  .rm-weeks { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--ink-soft); }
+  .rm-why { font-size: 13px; color: var(--ink-soft); margin: 0 0 6px; }
+  .rm-practice { font-size: 13px; margin: 0 0 8px; }
+  .rm-first { background: var(--warn-soft); color: var(--warn); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 5px; margin-left: 6px; }
+
+  /* ---- Must-have skills ---- */
+  .skill-must { background: var(--danger-soft); color: var(--danger); font-weight: 700; }
+  .must-box { border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; margin-top: 4px; font-size: 13px; }
+  .must-box .hint { color: var(--ink-soft); font-size: 12px; margin-bottom: 8px; }
+  .must-opt { display: inline-flex; align-items: center; gap: 5px; margin: 0 12px 6px 0; cursor: pointer; font-size: 13px; }
+  .must-opt input { width: auto; margin: 0; }
+  .filter-row { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13px; }
+  .filter-row input { width: auto; margin: 0; }
+
+  /* ---- Application timeline + notifications ---- */
+  .nav-badge { background: var(--danger); color: #fff; border-radius: 999px; font-size: 10.5px; font-weight: 700; padding: 1px 7px; margin-left: 6px; }
+  .app-card { border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 14px; background: var(--panel); }
+  .app-card:last-child { margin-bottom: 0; }
+  .app-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .app-card-title { font-weight: 600; font-size: 15px; }
+  .tl { position: relative; margin: 0; padding: 0 0 0 22px; list-style: none; }
+  .tl::before { content: ""; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+  .tl li { position: relative; padding: 0 0 12px; font-size: 13px; }
+  .tl li:last-child { padding-bottom: 0; }
+  .tl li::before { content: ""; position: absolute; left: -22px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--panel); border: 2px solid var(--line); box-sizing: border-box; }
+  .tl li.done::before { background: var(--accent); border-color: var(--accent); }
+  .tl li.t-shortlisted::before { background: var(--cand-accent); border-color: var(--cand-accent); }
+  .tl li.t-rejected::before { background: var(--danger); border-color: var(--danger); }
+  .tl-date { color: var(--ink-soft); font-size: 12px; display: block; }
+  .notif { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .notif:last-child { border-bottom: none; }
+  .notif.unread { font-weight: 600; }
+  .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 6px; flex-shrink: 0; }
+  .notif-dot.read { background: transparent; }
+
+  /* ---- ATS score ---- */
+  .ats-hero { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .ats-ring { width: 120px; height: 120px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .ats-ring-inner { width: 92px; height: 92px; border-radius: 50%; background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ats-ring-num { font-family: 'Space Mono', monospace; font-size: 28px; font-weight: 700; line-height: 1; }
+  .ats-ring-of { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+  .ats-grade { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  .ats-cat { margin-bottom: 16px; }
+  .ats-cat:last-child { margin-bottom: 0; }
+  .ats-cat-head { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600; margin-bottom: 6px; }
+  .ats-cat-head .mono { font-weight: 400; color: var(--ink-soft); font-size: 12.5px; }
+  .ats-bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .ats-bar > div { height: 100%; background: var(--accent); }
+  .ats-notes { margin: 8px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--ink-soft); }
+  .ats-notes li { padding: 2px 0; }
+  .ats-tip { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .ats-tip:last-child { border-bottom: none; }
+  .ats-tip-pts { font-family: 'Space Mono', monospace; font-weight: 700; color: var(--warn); min-width: 42px; }
+  select.ats-select { border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; font-family: inherit; font-size: 13px; background: var(--panel); max-width: 100%; }
+</style>
+</head>
+<body>
+
+<!-- ================= AUTH SCREEN ================= -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-mark">H</div>
+      <div class="auth-title">HireSense</div>
+    </div>
+
+    <div class="role-tabs">
+      <button id="role-tab-hr" class="active" onclick="setSignupRole('hr')">I'm hiring (HR)</button>
+      <button id="role-tab-candidate" onclick="setSignupRole('candidate')">I'm job hunting</button>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <div id="login-form">
+      <div class="form-group"><label>Email</label><input type="text" id="login-email" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="••••••••"></div>
+      <button class="btn btn-block" id="login-btn" onclick="doLogin()">Log in</button>
+      <div class="auth-switch">New here? <span onclick="toggleAuthMode()">Create an account</span></div>
+    </div>
+
+    <div id="signup-form" style="display:none">
+      <div class="form-group"><label>Full name</label><input type="text" id="signup-name" placeholder="Ashish Jaiswal"></div>
+      <div class="form-group" id="company-field"><label>Company</label><input type="text" id="signup-company" placeholder="TalentCo"></div>
+      <div class="form-group"><label>Email</label><input type="text" id="signup-email" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="signup-password" placeholder="At least 6 characters"></div>
+      <button class="btn btn-block" id="signup-btn" onclick="doSignup()">Create account</button>
+      <div class="auth-switch">Already have an account? <span onclick="toggleAuthMode()">Log in</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP SHELL ================= -->
+<div id="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="brand-mark">H</div><div class="brand-name">HireSense</div></div>
+    <div class="user-chip">
+      <div class="user-avatar" id="user-avatar">--</div>
+      <span id="user-label">--</span>
+      <button class="logout-btn" onclick="logout()">Log out</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- HR SIDEBAR -->
+    <div class="sidebar" id="sidebar-hr" style="display:none">
+      <div class="nav-item active" data-view="hr-dashboard" onclick="showView(this,'hr-dashboard')">📊 &nbsp;Dashboard</div>
+      <div class="nav-item" data-view="hr-jobs" onclick="showView(this,'hr-jobs')">📋 &nbsp;Job Postings</div>
+      <div class="nav-item" data-view="hr-bulk" onclick="showView(this,'hr-bulk')">⚡ &nbsp;Bulk Screening</div>
+      <div class="nav-item" data-view="hr-analytics" onclick="showView(this,'hr-analytics')">📈 &nbsp;Analytics</div>
+    </div>
+    <!-- CANDIDATE SIDEBAR -->
+    <div class="sidebar" id="sidebar-candidate" style="display:none">
+      <div class="nav-item active" data-view="cand-dashboard" onclick="showView(this,'cand-dashboard')">🏠 &nbsp;Dashboard</div>
+      <div class="nav-item" data-view="cand-jobs" onclick="showView(this,'cand-jobs')">🔍 &nbsp;Browse Jobs</div>
+      <div class="nav-item" data-view="cand-applications" onclick="showView(this,'cand-applications')">📄 &nbsp;My Applications<span class="nav-badge" id="notif-badge" style="display:none;"></span></div>
+      <div class="nav-item" data-view="cand-feedback" onclick="showView(this,'cand-feedback')">💡 &nbsp;Resume Feedback</div>
+      <div class="nav-item" data-view="cand-ats" onclick="showView(this,'cand-ats')">🎯 &nbsp;ATS Score</div>
+      <div class="nav-item" data-view="cand-roadmap" onclick="showView(this,'cand-roadmap')">🗺️ &nbsp;Learning Roadmap</div>
+      <div class="nav-item" data-view="cand-chat" onclick="showView(this,'cand-chat')">💬 &nbsp;Career Assistant</div>
+    </div>
+
+    <div class="main">
+      <!-- HR: DASHBOARD -->
+      <div class="view" id="hr-dashboard">
+        <div class="page-header"><div><h1 id="hr-greeting">Dashboard</h1><p>Here's what's happening across your open roles.</p></div></div>
+        <div class="stat-row" id="hr-stat-row"></div>
+        <div class="panel">
+          <div class="panel-title"><span>Your job postings</span></div>
+          <div id="hr-dashboard-jobs"></div>
+        </div>
+      </div>
+
+      <!-- HR: JOB POSTINGS -->
+      <div class="view" id="hr-jobs">
+        <div class="page-header">
+          <div><h1>Job Postings</h1><p>Manage your open roles.</p></div>
+          <button class="btn" onclick="openJobModal()">+ New posting</button>
+        </div>
+        <div class="panel"><div id="hr-jobs-list"></div></div>
+      </div>
+
+      <!-- HR: APPLICANTS FOR ONE JOB -->
+      <div class="view" id="hr-applicants">
+        <div class="page-header">
+          <div><h1 id="applicants-job-title">Applicants</h1><p>Ranked automatically by match to the job description.</p></div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-outline btn-sm" id="export-csv-btn" onclick="exportApplicantsCsv()">⬇ Export CSV</button>
+            <button class="btn btn-outline btn-sm" onclick="showView(document.querySelector('[data-view=hr-jobs]'),'hr-jobs')">← Back to postings</button>
+          </div>
+        </div>
+        <div class="panel"><div id="applicants-list"></div></div>
+      </div>
+
+      <!-- HR: BULK SCREENING -->
+      <div class="view" id="hr-bulk">
+        <div class="page-header"><div><h1>Bulk Screening</h1><p>Upload many resumes for one job and see them ranked in seconds.</p></div></div>
+        <div class="panel">
+          <div class="bulk-controls">
+            <div class="form-group"><label>Job</label><select id="bulk-job" class="ats-select" style="width:100%;"></select></div>
+            <div class="form-group"><label>Resumes (PDF, DOCX or TXT, up to <span id="bulk-max">25</span>)</label><input type="file" id="bulk-files" multiple accept=".pdf,.docx,.txt"></div>
+            <button class="btn" id="bulk-btn" onclick="runBulkRank()">Rank resumes</button>
+          </div>
+          <p class="bulk-note">Results are shown here only and are not saved. Candidates who apply through the platform are ranked on the Job Postings page.</p>
+          <div id="bulk-results"></div>
+        </div>
+      </div>
+
+      <!-- HR: ANALYTICS -->
+      <div class="view" id="hr-analytics">
+        <div class="page-header"><div><h1>Analytics</h1><p>Aggregate insight across all applicants and postings.</p></div></div>
+        <div class="stat-row" id="analytics-stat-row"></div>
+        <div class="two-col">
+          <div class="panel"><div class="panel-title">Match score distribution</div><canvas id="chart-scores" height="180"></canvas></div>
+          <div class="panel"><div class="panel-title">Most common missing skills</div><canvas id="chart-skills" height="180"></canvas></div>
+        </div>
+      </div>
+
+      <!-- CANDIDATE: DASHBOARD -->
+      <div class="view" id="cand-dashboard">
+        <div class="page-header"><div><h1 id="cand-greeting">Dashboard</h1><p>Here's where things stand with your applications.</p></div></div>
+        <div class="stat-row" id="cand-stat-row"></div>
+        <div class="panel" id="resume-panel">
+          <div class="panel-title">Your resume</div>
+          <div id="resume-status"></div>
+        </div>
+      </div>
+
+      <!-- CANDIDATE: BROWSE JOBS -->
+      <div class="view" id="cand-jobs">
+        <div class="page-header"><div><h1>Browse Jobs</h1><p>Match scores are calculated instantly against your uploaded resume.</p></div></div>
+        <div id="cand-jobs-list"></div>
+      </div>
+
+      <!-- CANDIDATE: APPLICATIONS -->
+      <div class="view" id="cand-applications">
+        <div class="page-header"><div><h1>My Applications</h1><p>Track the status of every role you've applied to.</p></div></div>
+        <div class="panel" id="cand-updates-panel" style="display:none;"><div class="panel-title">Recent updates</div><div id="cand-updates"></div></div>
+        <div class="panel"><div id="cand-applications-list"></div></div>
+      </div>
+
+      <!-- CANDIDATE: FEEDBACK -->
+      <div class="view" id="cand-feedback">
+        <div class="page-header"><div><h1>Resume Feedback</h1><p>Based on the roles you've applied to, here's how to strengthen your resume.</p></div></div>
+        <div class="panel"><div class="panel-title">Skills worth adding</div><div id="feedback-suggested"></div></div>
+        <div class="panel"><div class="panel-title">Where you're already strong</div><div id="feedback-strong"></div></div>
+      </div>
+
+      <!-- CANDIDATE: ATS SCORE -->
+      <div class="view" id="cand-ats">
+        <div class="page-header"><div><h1>ATS Score</h1><p>How well automated screening systems can read and rate your resume.</p></div></div>
+        <div id="ats-content"></div>
+      </div>
+
+      <!-- CANDIDATE: LEARNING ROADMAP -->
+      <div class="view" id="cand-roadmap">
+        <div class="page-header"><div><h1>Learning Roadmap</h1><p>A step-by-step plan to close your skill gaps, in the order that makes sense.</p></div></div>
+        <div class="panel">
+          <label class="job-meta" style="display:block; margin-bottom:5px;">Plan for</label>
+          <select id="roadmap-target" class="ats-select" onchange="loadRoadmap(this.value)"></select>
+        </div>
+        <div id="roadmap-content"></div>
+      </div>
+
+      <!-- CANDIDATE: CAREER ASSISTANT CHAT -->
+      <div class="view" id="cand-chat">
+        <div class="page-header">
+          <div><h1>Career Assistant</h1><p>Paste a job description to see required skills, or ask anything about your job search.</p></div>
+          <button class="btn btn-outline btn-sm" onclick="clearChat()">Clear chat</button>
+        </div>
+        <div class="panel" style="padding:0; overflow:hidden;">
+          <div id="chat-messages" style="height:420px; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px;">
+            <div class="chat-bubble chat-bubble-bot">
+              Hi! Paste a job description and I'll break down the required skills — or ask me anything about your resume or job search.
+            </div>
+          </div>
+          <div style="border-top:1px solid var(--line); padding:14px; display:flex; gap:10px;">
+            <textarea id="chat-input" placeholder="Ask a question or paste a job description..." style="min-height:44px; flex:1; resize:none;" onkeydown="handleChatKeydown(event)"></textarea>
+            <button class="btn" id="chat-send-btn" onclick="sendChatMessage()" style="align-self:flex-end;">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Job creation modal -->
+<div class="modal-backdrop" id="job-modal">
+  <div class="modal">
+    <h3>New job posting</h3>
+    <div class="form-group"><label>Job title</label><input type="text" id="new-job-title" placeholder="Backend Engineer"></div>
+    <div class="form-group"><label>Job description</label><textarea id="new-job-desc" placeholder="Describe the role, required skills, experience level..."></textarea></div>
+    <div class="form-group">
+      <label>Must-have skills</label>
+      <div class="must-box">
+        <div class="hint">Skills found in your description. Tick the ones a candidate must have. Candidates missing them rank lower.</div>
+        <div id="must-options"><span class="job-meta">Type the description above and skills will appear here.</span></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeJobModal()">Cancel</button>
+      <button class="btn" id="create-job-btn" onclick="submitNewJob()">Create posting</button>
+    </div>
+  </div>
+</div>
+
+<!-- Resume upload modal -->
+<div class="modal-backdrop" id="resume-modal">
+  <div class="modal">
+    <h3>Upload your resume</h3>
+    <div class="file-drop" id="resume-drop" onclick="document.getElementById('resume-file-input').click()">
+      📄 Click to select your resume (PDF, DOCX, or TXT)
+      <input type="file" id="resume-file-input" accept=".pdf,.docx,.txt" onchange="handleResumeSelected(this.files)">
+    </div>
+    <div id="resume-selected-name" style="margin-top:10px; font-size:13px; color:var(--ink-soft);"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeResumeModal()">Cancel</button>
+      <button class="btn" id="upload-resume-btn" onclick="submitResume()" disabled>Upload</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = ""; // same-origin
+  let TOKEN = localStorage.getItem("hiresense_token") || null;
+  let CURRENT_USER = null;
+  let signupRole = "hr";
+  let authMode = "login";
+  let selectedResumeFile = null;
+  let scoreChart = null, skillChart = null;
+
+  // ---------- API helper ----------
+  async function api(path, options = {}) {
+    const headers = options.headers || {};
+    if (!(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
+    if (TOKEN) headers["Authorization"] = "Bearer " + TOKEN;
+    const res = await fetch(API + path, { ...options, headers });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || "Something went wrong.");
+    return data;
+  }
+
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  function showAuthError(msg) {
+    const el = document.getElementById("auth-error");
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+  function clearAuthError() { document.getElementById("auth-error").style.display = "none"; }
+
+  function setSignupRole(role) {
+    signupRole = role;
+    document.getElementById("role-tab-hr").classList.toggle("active", role === "hr");
+    document.getElementById("role-tab-candidate").classList.toggle("active", role === "candidate");
+    document.getElementById("company-field").style.display = role === "hr" ? "block" : "none";
+  }
+
+  function toggleAuthMode() {
+    authMode = authMode === "login" ? "signup" : "login";
+    document.getElementById("login-form").style.display = authMode === "login" ? "block" : "none";
+    document.getElementById("signup-form").style.display = authMode === "signup" ? "block" : "none";
+    clearAuthError();
+  }
+
+  async function doSignup() {
+    clearAuthError();
+    const name = document.getElementById("signup-name").value.trim();
+    const company = document.getElementById("signup-company").value.trim();
+    const email = document.getElementById("signup-email").value.trim();
+    const password = document.getElementById("signup-password").value;
+    if (!name || !email || !password) return showAuthError("Please fill in all fields.");
+
+    const btn = document.getElementById("signup-btn");
+    btn.disabled = true; btn.textContent = "Creating account...";
+    try {
+      const data = await api("/api/auth/signup", {
+        method: "POST",
+        body: JSON.stringify({ name, email, password, role: signupRole, company: signupRole === "hr" ? company : null }),
+      });
+      onAuthSuccess(data);
+    } catch (e) {
+      showAuthError(e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = "Create account";
+    }
+  }
+
+  async function doLogin() {
+    clearAuthError();
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    if (!email || !password) return showAuthError("Please enter email and password.");
+
+    const btn = document.getElementById("login-btn");
+    btn.disabled = true; btn.textContent = "Logging in...";
+    try {
+      const data = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+      onAuthSuccess(data);
+    } catch (e) {
+      showAuthError(e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = "Log in";
+    }
+  }
+
+  function onAuthSuccess(data) {
+    TOKEN = data.token;
+    localStorage.setItem("hiresense_token", TOKEN);
+    CURRENT_USER = data.user;
+    enterApp();
+  }
+
+  function logout() {
+    TOKEN = null;
+    localStorage.removeItem("hiresense_token");
+    CURRENT_USER = null;
+    document.getElementById("app-shell").style.display = "none";
+    document.getElementById("auth-screen").style.display = "flex";
+  }
+
+  async function enterApp() {
+    document.getElementById("auth-screen").style.display = "none";
+    document.getElementById("app-shell").style.display = "block";
+    document.body.classList.toggle("candidate-mode", CURRENT_USER.role === "candidate");
+
+    if (CURRENT_USER.role === "hr") {
+      document.getElementById("sidebar-hr").style.display = "block";
+      document.getElementById("sidebar-candidate").style.display = "none";
+      document.getElementById("user-avatar").textContent = "HR";
+      document.getElementById("user-label").textContent = CURRENT_USER.name;
+      document.getElementById("hr-greeting").textContent = "Good to see you, " + CURRENT_USER.name.split(" ")[0];
+      showView(document.querySelector('#sidebar-hr .nav-item'), 'hr-dashboard');
+      await loadHrDashboard();
+    } else {
+      document.getElementById("sidebar-hr").style.display = "none";
+      document.getElementById("sidebar-candidate").style.display = "block";
+      const initials = CURRENT_USER.name.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+      document.getElementById("user-avatar").textContent = initials;
+      document.getElementById("user-label").textContent = CURRENT_USER.name;
+      document.getElementById("cand-greeting").textContent = "Welcome back, " + CURRENT_USER.name.split(" ")[0];
+      showView(document.querySelector('#sidebar-candidate .nav-item'), 'cand-dashboard');
+      await loadCandidateDashboard();
+      refreshNotifBadge();
+    }
+  }
+
+  function showView(el, viewId) {
+    const sidebar = el.closest(".sidebar");
+    sidebar.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    el.classList.add("active");
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.getElementById(viewId).classList.add("active");
+
+    if (viewId === "hr-jobs") loadHrJobs();
+    if (viewId === "hr-analytics") loadAnalytics();
+    if (viewId === "cand-jobs") loadCandidateJobs();
+    if (viewId === "cand-applications") loadCandidateApplications();
+    if (viewId === "cand-feedback") loadCandidateFeedback();
+    if (viewId === "cand-ats") loadAtsScore();
+    if (viewId === "cand-roadmap") initRoadmap();
+    if (viewId === "hr-bulk") initBulkScreen();
+    if (viewId === "cand-chat") loadChatHistory();
+  }
+
+  function statusPillHtml(status) {
+    const map = { shortlisted: "Shortlisted", review: "In review", rejected: "Rejected" };
+    return `<span class="status-pill status-${status}">${map[status] || status}</span>`;
+  }
+  function skillTagsHtml(matched, missing, mustHave = []) {
+    return matched.map(s => `<span class="skill-tag skill-match">✓ ${escapeHtml(s)}${mustHave.includes(s) ? " ★" : ""}</span>`).join("") +
+           missing.map(s => mustHave.includes(s)
+             ? `<span class="skill-tag skill-must">missing must-have: ${escapeHtml(s)}</span>`
+             : `<span class="skill-tag skill-miss">missing: ${escapeHtml(s)}</span>`).join("");
+  }
+  function scoreBarHtml(score) {
+    return `<div class="score-cell"><span class="score-num">${score}</span><div class="score-bar-bg"><div class="score-bar-fill" style="width:${Math.min(score,100)}%"></div></div></div>`;
+  }
+  function escapeHtml(str) {
+    const div = document.createElement("div"); div.textContent = str; return div.innerHTML;
+  }
+
+  // ---------- HR: Dashboard ----------
+  async function loadHrDashboard() {
+    try {
+      const jobs = await api("/api/jobs");
+      const totalApplicants = jobs.reduce((s, j) => s + j.applicant_count, 0);
+      document.getElementById("hr-stat-row").innerHTML = `
+        <div class="stat-card"><div class="stat-num">${jobs.length}</div><div class="stat-label">Job postings</div></div>
+        <div class="stat-card"><div class="stat-num">${totalApplicants}</div><div class="stat-label">Total applicants</div></div>
+      `;
+      const listEl = document.getElementById("hr-dashboard-jobs");
+      if (jobs.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><div class="icon">📋</div>No job postings yet. Create your first one from "Job Postings."</div>`;
+      } else {
+        listEl.innerHTML = jobs.map(j => `
+          <div class="job-row">
+            <div><div class="job-title" onclick="openApplicants(${j.id}, '${escapeHtml(j.title)}')">${escapeHtml(j.title)}</div>
+            <div class="job-meta">${j.applicant_count} applicant(s)</div></div>
+            <span class="badge">${j.status}</span>
+          </div>
+        `).join("");
+      }
+    } catch (e) { toast(e.message); }
+  }
+
+  // ---------- HR: Job postings ----------
+  async function loadHrJobs() {
+    try {
+      const jobs = await api("/api/jobs");
+      const listEl = document.getElementById("hr-jobs-list");
+      if (jobs.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><div class="icon">📋</div>No postings yet — click "+ New posting" to create one.</div>`;
+      } else {
+        listEl.innerHTML = jobs.map(j => `
+          <div class="job-row">
+            <div><div class="job-title" onclick="openApplicants(${j.id}, '${escapeHtml(j.title)}')">${escapeHtml(j.title)}</div>
+            <div class="job-meta">${j.applicant_count} applicant(s)
+              <span class="badge" style="${j.status === 'closed' ? 'background:var(--danger-soft);color:var(--danger);' : ''}">${j.status}</span>
+            </div></div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-sm btn-outline" onclick="toggleJobStatus(${j.id}, '${j.status}')">${j.status === 'open' ? 'Close' : 'Reopen'}</button>
+              <button class="btn btn-sm btn-outline" onclick="openApplicants(${j.id}, '${escapeHtml(j.title)}')">View applicants</button>
+            </div>
+          </div>
+        `).join("");
+      }
+    } catch (e) { toast(e.message); }
+  }
+
+  async function toggleJobStatus(jobId, currentStatus) {
+    const newStatus = currentStatus === "open" ? "closed" : "open";
+    try {
+      await api(`/api/jobs/${jobId}/status`, { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
+      toast(newStatus === "closed" ? "Job posting closed — no longer visible to candidates." : "Job posting reopened.");
+      loadHrJobs();
+    } catch (e) { toast(e.message); }
+  }
+
+  function openJobModal() {
+    document.getElementById("job-modal").classList.add("active");
+    document.getElementById("new-job-desc").oninput = scheduleSkillDetect;
+  }
+  function closeJobModal() {
+    document.getElementById("job-modal").classList.remove("active");
+    document.getElementById("new-job-title").value = "";
+    document.getElementById("new-job-desc").value = "";
+    document.getElementById("must-options").innerHTML = `<span class="job-meta">Type the description above and skills will appear here.</span>`;
+  }
+
+  let skillDetectTimer = null;
+  function scheduleSkillDetect() {
+    clearTimeout(skillDetectTimer);
+    skillDetectTimer = setTimeout(detectJobSkills, 600);
+  }
+  async function detectJobSkills() {
+    const description = document.getElementById("new-job-desc").value.trim();
+    const box = document.getElementById("must-options");
+    if (!description) {
+      box.innerHTML = `<span class="job-meta">Type the description above and skills will appear here.</span>`;
+      return;
+    }
+    try {
+      const r = await api("/api/jobs/detect-skills", { method: "POST", body: JSON.stringify({ description }) });
+      // keep the ticks the HR already made while the description is being edited
+      const ticked = new Set([...box.querySelectorAll("input:checked")].map(i => i.value));
+      box.innerHTML = r.skills.length
+        ? r.skills.map(sk => `<label class="must-opt"><input type="checkbox" value="${escapeHtml(sk)}" ${ticked.has(sk) ? "checked" : ""}> ${escapeHtml(sk)}</label>`).join("")
+        : `<span class="job-meta">No known skills detected yet. Mention tools like Python, SQL or React in the description.</span>`;
+    } catch (e) { /* quiet: the box just stays as it was */ }
+  }
+
+  async function submitNewJob() {
+    const title = document.getElementById("new-job-title").value.trim();
+    const description = document.getElementById("new-job-desc").value.trim();
+    if (!title || !description) return toast("Please fill in both fields.");
+    const must_have_skills = [...document.querySelectorAll("#must-options input:checked")].map(i => i.value);
+    const btn = document.getElementById("create-job-btn");
+    btn.disabled = true; btn.textContent = "Creating...";
+    try {
+      await api("/api/jobs", { method: "POST", body: JSON.stringify({ title, description, must_have_skills }) });
+      closeJobModal();
+      toast("Job posting created.");
+      loadHrJobs(); loadHrDashboard();
+    } catch (e) { toast(e.message); }
+    finally { btn.disabled = false; btn.textContent = "Create posting"; }
+  }
+
+  // ---------- HR: Applicants ----------
+  let currentApplicantsJobId = null;
+
+  let currentApplicants = [];
+  let currentApplicantsTitle = "";
+  let onlyMeetsMust = false;
+
+  async function openApplicants(jobId, title) {
+    currentApplicantsJobId = jobId;
+    currentApplicantsTitle = title;
+    document.getElementById("applicants-job-title").textContent = "Applicants — " + title;
+    showView(document.querySelector('[data-view=hr-jobs]'), 'hr-applicants');
+    try {
+      currentApplicants = await api(`/api/jobs/${jobId}/applicants`);
+      renderApplicants();
+    } catch (e) { toast(e.message); }
+  }
+
+  function toggleMustFilter(checked) { onlyMeetsMust = checked; renderApplicants(); }
+
+  function renderApplicants() {
+    const jobId = currentApplicantsJobId, title = currentApplicantsTitle;
+    const listEl = document.getElementById("applicants-list");
+    const all = currentApplicants;
+    if (all.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><div class="icon">👥</div>No applicants yet for this posting.</div>`;
+      return;
+    }
+    const must = all[0].must_have || [];
+    // rank numbers stay the real rank even when the filter hides some people
+    const rows = all.map((a, i) => ({ a, rank: i + 1 }))
+                    .filter(r => !onlyMeetsMust || r.a.missing_must_have.length === 0);
+
+    const filterHtml = must.length ? `
+      <div class="filter-row">
+        <label class="must-opt" style="margin:0;"><input type="checkbox" ${onlyMeetsMust ? "checked" : ""} onchange="toggleMustFilter(this.checked)"> Only show candidates who meet all must-haves</label>
+        <span class="job-meta">Must-have: ${must.map(escapeHtml).join(", ")}</span>
+      </div>` : "";
+
+    listEl.innerHTML = filterHtml + (rows.length === 0
+      ? `<div class="empty-state"><div class="icon">🔎</div>No applicant meets every must-have skill.</div>`
+      : `<table>
+          <tr><th>Rank</th><th>Candidate</th><th>Match</th><th>Skills</th><th>Status</th><th>Notes</th></tr>
+          ${rows.map(({ a, rank }) => `
+            <tr>
+              <td class="mono">#${rank}</td>
+              <td>${escapeHtml(a.candidate_name)}<br><span class="job-meta">${escapeHtml(a.candidate_email)}</span></td>
+              <td>${scoreBarHtml(a.score)}</td>
+              <td>${skillTagsHtml(a.matched_skills, a.missing_skills, a.must_have || [])}</td>
+              <td>
+                <select class="status-select" onchange="updateApplicantStatus(${a.id}, this.value, ${jobId}, '${escapeHtml(title)}')">
+                  <option value="review" ${a.status === "review" ? "selected" : ""}>In review</option>
+                  <option value="shortlisted" ${a.status === "shortlisted" ? "selected" : ""}>Shortlisted</option>
+                  <option value="rejected" ${a.status === "rejected" ? "selected" : ""}>Rejected</option>
+                </select>
+              </td>
+              <td style="min-width:180px;">
+                <textarea id="notes-${a.id}" style="min-height:50px; font-size:12px; padding:6px;" placeholder="Private note...">${escapeHtml(a.notes || "")}</textarea>
+                <button class="btn btn-sm btn-outline" style="margin-top:4px;" onclick="saveApplicantNotes(${a.id})">Save note</button>
+              </td>
+            </tr>
+          `).join("")}
+        </table>`);
+  }
+
+  async function saveApplicantNotes(appId) {
+    const notes = document.getElementById(`notes-${appId}`).value;
+    try {
+      await api(`/api/applications/${appId}/notes`, { method: "PATCH", body: JSON.stringify({ notes }) });
+      toast("Note saved.");
+    } catch (e) { toast(e.message); }
+  }
+
+  async function exportApplicantsCsv() {
+    if (!currentApplicantsJobId) return;
+    try {
+      const res = await fetch(`${API}/api/jobs/${currentApplicantsJobId}/applicants/export`, {
+        headers: { "Authorization": "Bearer " + TOKEN },
+      });
+      if (!res.ok) throw new Error("Export failed.");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "applicants.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) { toast(e.message); }
+  }
+
+  async function updateApplicantStatus(appId, status, jobId, title) {
+    try {
+      await api(`/api/applications/${appId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+      toast("Status updated.");
+      openApplicants(jobId, title);
+    } catch (e) { toast(e.message); }
+  }
+
+  // ---------- HR: Analytics ----------
+  async function loadAnalytics() {
+    try {
+      const a = await api("/api/analytics");
+      document.getElementById("analytics-stat-row").innerHTML = `
+        <div class="stat-card"><div class="stat-num">${a.total_applicants}</div><div class="stat-label">Total applicants</div></div>
+        <div class="stat-card"><div class="stat-num">${a.avg_score}%</div><div class="stat-label">Average match score</div></div>
+      `;
+      const buckets = a.score_distribution;
+      const scoreCtx = document.getElementById("chart-scores");
+      const skillCtx = document.getElementById("chart-skills");
+      if (scoreChart) scoreChart.destroy();
+      if (skillChart) skillChart.destroy();
+
+      scoreChart = new Chart(scoreCtx, {
+        type: "bar",
+        data: { labels: Object.keys(buckets), datasets: [{ data: Object.values(buckets), backgroundColor: "#2B4C7E", borderRadius: 4 }] },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: "#EEEBE3" } }, x: { grid: { display: false } } } }
+      });
+
+      const skills = a.top_missing_skills;
+      skillChart = new Chart(skillCtx, {
+        type: "bar",
+        data: { labels: skills.map(s => s.skill), datasets: [{ data: skills.map(s => s.count), backgroundColor: "#B8862B", borderRadius: 4 }] },
+        options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: "#EEEBE3" } }, y: { grid: { display: false } } } }
+      });
+    } catch (e) { toast(e.message); }
+  }
+
+  // ---------- Candidate: Dashboard ----------
+  async function loadCandidateDashboard() {
+    try {
+      const me = await api("/api/auth/me");
+      const apps = await api("/api/candidate/applications");
+      const shortlisted = apps.filter(a => a.status === "shortlisted").length;
+      const best = apps.length ? Math.max(...apps.map(a => a.score)) : 0;
+      document.getElementById("cand-stat-row").innerHTML = `
+        <div class="stat-card"><div class="stat-num">${apps.length}</div><div class="stat-label">Applications sent</div></div>
+        <div class="stat-card"><div class="stat-num">${shortlisted}</div><div class="stat-label">Shortlisted</div></div>
+        <div class="stat-card"><div class="stat-num">${best}%</div><div class="stat-label">Best match score</div></div>
+      `;
+      const resumeStatus = document.getElementById("resume-status");
+      if (me.has_resume) {
+        resumeStatus.innerHTML = `<p style="color:var(--ink-soft); margin:0 0 10px;">✅ Resume on file.</p>
+          <button class="btn btn-sm btn-outline" onclick="openResumeModal()">Replace resume</button>`;
+      } else {
+        resumeStatus.innerHTML = `<p style="color:var(--ink-soft); margin:0 0 10px;">You haven't uploaded a resume yet — upload one to see match scores and apply to jobs.</p>
+          <button class="btn btn-sm" onclick="openResumeModal()">Upload resume</button>`;
+      }
+    } catch (e) { toast(e.message); }
+  }
+
+  function openResumeModal() { document.getElementById("resume-modal").classList.add("active"); }
+  function closeResumeModal() {
+    document.getElementById("resume-modal").classList.remove("active");
+    selectedResumeFile = null;
+    document.getElementById("resume-selected-name").textContent = "";
+    document.getElementById("upload-resume-btn").disabled = true;
+  }
+  function handleResumeSelected(files) {
+    if (!files.length) return;
+    selectedResumeFile = files[0];
+    document.getElementById("resume-selected-name").textContent = "Selected: " + selectedResumeFile.name;
+    document.getElementById("upload-resume-btn").disabled = false;
+  }
+  async function submitResume() {
+    if (!selectedResumeFile) return;
+    const btn = document.getElementById("upload-resume-btn");
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-inline"></span>Uploading...';
+    try {
+      const formData = new FormData();
+      formData.append("resume", selectedResumeFile);
+      await api("/api/candidate/resume", { method: "POST", body: formData });
+      toast("Resume uploaded.");
+      closeResumeModal();
+      loadCandidateDashboard();
+      if (document.getElementById("cand-ats").classList.contains("active")) loadAtsScore();
+    } catch (e) {
+      toast(e.message);
+      btn.disabled = false; btn.textContent = "Upload";
+    }
+  }
+
+  // ---------- Candidate: Browse jobs ----------
+  async function loadCandidateJobs() {
+    try {
+      const jobs = await api("/api/jobs/public");
+      const listEl = document.getElementById("cand-jobs-list");
+      if (jobs.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><div class="icon">🔍</div>No open jobs right now — check back soon.</div>`;
+        return;
+      }
+      listEl.innerHTML = jobs.map(j => `
+        <div class="job-card">
+          <div class="job-card-top">
+            <div><h3>${escapeHtml(j.title)}</h3><div class="company">${escapeHtml(j.company || j.hr_name)}</div></div>
+            ${j.match_score !== null ? `<div class="match-chip">${j.match_score}%</div>` : `<div class="job-meta">Upload resume to see match</div>`}
+          </div>
+          <p class="desc">${escapeHtml(j.description)}</p>
+          ${(j.must_have_skills || []).length ? `<div style="margin:0 0 10px;"><span class="job-meta">Must-have:</span> ${j.must_have_skills.map(sk =>
+            j.match_score !== null && (j.missing_must_have || []).includes(sk)
+              ? `<span class="skill-tag skill-must">✗ ${escapeHtml(sk)}</span>`
+              : `<span class="skill-tag ${j.match_score !== null ? "skill-match" : ""}">${j.match_score !== null ? "✓ " : ""}${escapeHtml(sk)}</span>`).join("")}</div>` : ""}
+          ${j.already_applied
+            ? `<button class="btn btn-sm btn-outline" disabled>Already applied</button>`
+            : `<button class="btn btn-sm" onclick="applyToJob(${j.id})">Apply now</button>`}
+        </div>
+      `).join("");
+    } catch (e) { toast(e.message); }
+  }
+
+  async function applyToJob(jobId) {
+    try {
+      const result = await api(`/api/jobs/${jobId}/apply`, { method: "POST" });
+      toast(`Applied — your match score is ${result.score}%`);
+      loadCandidateJobs();
+    } catch (e) { toast(e.message); }
+  }
+
+  // ---------- Candidate: Applications ----------
+  const TL_LABELS = { applied: "Applied", review: "In review", shortlisted: "Shortlisted", rejected: "Not selected" };
+
+  function fmtDate(iso) {
+    const d = new Date(iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z");
+    return isNaN(d) ? "" : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function timelineHtml(events) {
+    return `<ul class="tl">${events.map((e, i) => `
+      <li class="done t-${e.status}">
+        <strong>${TL_LABELS[e.status] || escapeHtml(e.status)}</strong>
+        <span class="tl-date">${fmtDate(e.at)}</span>
+      </li>`).join("")}</ul>`;
+  }
+
+  async function refreshNotifBadge() {
+    try {
+      const n = await api("/api/candidate/notifications");
+      const b = document.getElementById("notif-badge");
+      b.textContent = n.unread;
+      b.style.display = n.unread > 0 ? "inline-block" : "none";
+      return n;
+    } catch (e) { return null; }
+  }
+
+  async function loadCandidateApplications() {
+    try {
+      const [apps, notifs] = await Promise.all([
+        api("/api/candidate/applications"),
+        api("/api/candidate/notifications"),
+      ]);
+
+      // Recent updates (unread ones are highlighted, then marked as read)
+      const panel = document.getElementById("cand-updates-panel");
+      if (notifs.items.length) {
+        panel.style.display = "block";
+        document.getElementById("cand-updates").innerHTML = notifs.items.slice(0, 5).map(n => {
+          const verb = n.status === "shortlisted" ? "was shortlisted 🎉"
+                     : n.status === "rejected" ? "was not selected this time"
+                     : "is back in review";
+          return `<div class="notif ${n.seen ? "" : "unread"}">
+            <span class="notif-dot ${n.seen ? "read" : ""}"></span>
+            <div>Your application for <strong>${escapeHtml(n.job_title)}</strong>${n.company ? " at " + escapeHtml(n.company) : ""} ${verb}
+              <span class="tl-date">${fmtDate(n.created_at)}</span></div>
+          </div>`;
+        }).join("");
+      } else {
+        panel.style.display = "none";
+      }
+
+      const listEl = document.getElementById("cand-applications-list");
+      if (apps.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><div class="icon">📄</div>You haven't applied to any jobs yet.</div>`;
+      } else {
+        listEl.innerHTML = apps.map(a => `
+          <div class="app-card">
+            <div class="app-card-head">
+              <div>
+                <div class="app-card-title">${escapeHtml(a.job_title)}</div>
+                <div class="job-meta">${escapeHtml(a.company || "")} · <span class="mono">${a.score}%</span> match</div>
+              </div>
+              ${statusPillHtml(a.status)}
+            </div>
+            ${timelineHtml(a.timeline && a.timeline.length ? a.timeline : [{ status: "applied", at: a.applied_at }])}
+          </div>`).join("");
+      }
+
+      if (notifs.unread > 0) {
+        await api("/api/candidate/notifications/read", { method: "POST" });
+        document.getElementById("notif-badge").style.display = "none";
+      }
+    } catch (e) { toast(e.message); }
+  }
+
+  // ---------- Candidate: Feedback ----------
+  async function loadCandidateFeedback() {
+    try {
+      const fb = await api("/api/candidate/feedback");
+      const suggestedEl = document.getElementById("feedback-suggested");
+      const strongEl = document.getElementById("feedback-strong");
+
+      if (fb.suggested_skills.length === 0) {
+        suggestedEl.innerHTML = `<div class="empty-state"><div class="icon">💡</div>Apply to a few jobs to get personalized feedback.</div>`;
+      } else {
+        suggestedEl.innerHTML = fb.suggested_skills.map(s => `
+          <div class="feedback-item" style="flex-direction:column; align-items:flex-start;">
+            <div>💡&nbsp; <strong>${escapeHtml(s.skill)}</strong> appears in ${s.appears_in_n_jobs} job(s) you've applied to but isn't on your resume.</div>
+            ${s.resources && s.resources.length ? `
+              <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                ${s.resources.map(r => `
+                  <a href="${r.url}" target="_blank" rel="noopener" class="skill-tag" style="background:var(--accent-soft); color:var(--accent); text-decoration:none;">
+                    ${r.type === "YouTube" ? "▶" : "📄"} ${escapeHtml(r.title)}
+                  </a>
+                `).join("")}
+              </div>
+            ` : ""}
+          </div>
+        `).join("");
+      }
+      strongEl.innerHTML = fb.strong_skills.length
+        ? fb.strong_skills.map(s => `<span class="skill-tag skill-match">✓ ${escapeHtml(s)}</span>`).join(" ")
+        : `<span class="job-meta">No matched skills yet.</span>`;
+    } catch (e) { toast(e.message); }
+  }
+
+  // ---------- Candidate: ATS score ----------
+  let atsAppliedJobs = null;
+
+  async function loadAtsScore(jobId) {
+    const el = document.getElementById("ats-content");
+    el.innerHTML = `<div class="panel"><div class="empty-state">Analysing your resume...</div></div>`;
+    try {
+      if (atsAppliedJobs === null) atsAppliedJobs = await api("/api/candidate/applications");
+      const r = await api("/api/candidate/ats" + (jobId ? `?job_id=${jobId}` : ""));
+      renderAtsScore(r, jobId);
+    } catch (e) {
+      el.innerHTML = `<div class="panel"><div class="empty-state"><div class="icon">📄</div>${escapeHtml(e.message)}
+        <div style="margin-top:14px;"><button class="btn btn-sm" onclick="openResumeModal()">Upload resume</button></div></div></div>`;
+    }
+  }
+
+  function renderAtsScore(r, jobId) {
+    const deg = Math.round(r.score * 3.6);
+    const jobOptions = atsAppliedJobs.map(a =>
+      `<option value="${a.job_id}" ${String(a.job_id) === String(jobId) ? "selected" : ""}>${escapeHtml(a.job_title)}${a.company ? " — " + escapeHtml(a.company) : ""}</option>`
+    ).join("");
+
+    const hero = `
+      <div class="panel ats-hero">
+        <div class="ats-ring" style="background: conic-gradient(var(--accent) ${deg}deg, var(--line) 0);">
+          <div class="ats-ring-inner"><div class="ats-ring-num">${r.score}</div><div class="ats-ring-of">out of 100</div></div>
+        </div>
+        <div style="flex:1; min-width:220px;">
+          <div class="ats-grade">${escapeHtml(r.grade)}</div>
+          <div class="job-meta" style="margin-bottom:12px;">Scored on contact details, sections, skills, impact, length and clarity.</div>
+          ${atsAppliedJobs.length ? `
+            <label class="job-meta" style="display:block; margin-bottom:5px;">Check keywords for a job you applied to</label>
+            <select class="ats-select" onchange="loadAtsScore(this.value)">
+              <option value="">No specific job</option>${jobOptions}
+            </select>` : ""}
+        </div>
+      </div>`;
+
+    const jobBlock = r.job_keywords ? `
+      <div class="panel">
+        <div class="panel-title"><span>Keywords for ${escapeHtml(r.job_title || "this job")}</span><span class="match-chip">${r.job_keywords.percent}%</span></div>
+        ${r.job_keywords.matched.map(s => `<span class="skill-tag skill-match">✓ ${escapeHtml(s)}</span>`).join("")}
+        ${r.job_keywords.missing.map(s => `<span class="skill-tag skill-miss">missing: ${escapeHtml(s)}</span>`).join("")}
+        ${!r.job_keywords.matched.length && !r.job_keywords.missing.length ? `<span class="job-meta">No recognised skill keywords in this job description.</span>` : ""}
+      </div>` : "";
+
+    const tips = r.tips.length ? `
+      <div class="panel">
+        <div class="panel-title">What to fix first</div>
+        ${r.tips.map(t => `<div class="ats-tip"><div class="ats-tip-pts">+${t.points}</div><div>${escapeHtml(t.tip)}</div></div>`).join("")}
+      </div>` : `<div class="panel"><div class="panel-title">What to fix first</div><span class="job-meta">Nothing major. Your resume is in good shape for ATS screening.</span></div>`;
+
+    const cats = `
+      <div class="panel">
+        <div class="panel-title">Score breakdown</div>
+        ${r.categories.map(c => `
+          <div class="ats-cat">
+            <div class="ats-cat-head"><span>${escapeHtml(c.label)}</span><span class="mono">${c.score} / ${c.max}</span></div>
+            <div class="ats-bar"><div style="width:${c.max ? (c.score / c.max) * 100 : 0}%"></div></div>
+            <ul class="ats-notes">
+              ${c.good.map(g => `<li>✓ ${escapeHtml(g)}</li>`).join("")}
+              ${c.issues.map(i => `<li style="color:var(--warn);">• ${escapeHtml(i)}</li>`).join("")}
+            </ul>
+          </div>`).join("")}
+      </div>`;
+
+    document.getElementById("ats-content").innerHTML = hero + jobBlock + tips + cats;
+  }
+
+  // ---------- HR: Bulk screening ----------
+  let bulkData = null;
+  let bulkMax = 25;
+  let bulkOnlyMeets = false;
+
+  async function initBulkScreen() {
+    const sel = document.getElementById("bulk-job");
+    try {
+      const cfg = await api("/api/config");
+      bulkMax = cfg.max_bulk_files || 25;
+      document.getElementById("bulk-max").textContent = bulkMax;
+    } catch (e) { /* keep the default */ }
+    try {
+      const jobs = await api("/api/jobs");
+      sel.innerHTML = jobs.length
+        ? jobs.map(j => `<option value="${j.id}">${escapeHtml(j.title)}${j.status === "closed" ? " (closed)" : ""}</option>`).join("")
+        : `<option value="">Create a job posting first</option>`;
+    } catch (e) { toast(e.message); }
+  }
+
+  async function runBulkRank() {
+    const jobId = document.getElementById("bulk-job").value;
+    const files = document.getElementById("bulk-files").files;
+    if (!jobId) return toast("Please create and select a job first.");
+    if (!files.length) return toast("Please choose at least one resume.");
+    if (files.length > bulkMax) return toast(`Please choose ${bulkMax} resumes or fewer.`);
+
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f);
+    const btn = document.getElementById("bulk-btn");
+    const out = document.getElementById("bulk-results");
+    btn.disabled = true; btn.textContent = "Ranking...";
+    out.innerHTML = `<div class="empty-state">Reading and ranking ${files.length} resume(s). This can take a minute on free hosting.</div>`;
+    try {
+      bulkData = await api(`/api/jobs/${jobId}/bulk-rank`, { method: "POST", body: fd });
+      bulkOnlyMeets = false;
+      renderBulkResults();
+    } catch (e) {
+      out.innerHTML = "";
+      toast(e.message);
+    } finally { btn.disabled = false; btn.textContent = "Rank resumes"; }
+  }
+
+  function toggleBulkFilter(checked) { bulkOnlyMeets = checked; renderBulkResults(); }
+
+  function renderBulkResults() {
+    const d = bulkData;
+    const out = document.getElementById("bulk-results");
+    const must = d.must_have || [];
+    const rows = d.results.map((r, i) => ({ r, rank: i + 1 }))
+                          .filter(x => !bulkOnlyMeets || x.r.missing_must_have.length === 0);
+
+    const errors = d.errors.length
+      ? `<div style="margin-bottom:12px;">${d.errors.map(e => `<div class="bulk-err">⚠ ${escapeHtml(e.filename)}: ${escapeHtml(e.error)}</div>`).join("")}</div>` : "";
+    const filter = must.length ? `
+      <div class="filter-row">
+        <label class="must-opt" style="margin:0;"><input type="checkbox" ${bulkOnlyMeets ? "checked" : ""} onchange="toggleBulkFilter(this.checked)"> Only show resumes that meet all must-haves</label>
+        <span class="job-meta">Must-have: ${must.map(escapeHtml).join(", ")}</span>
+      </div>` : "";
+
+    if (!d.results.length) { out.innerHTML = errors + `<div class="empty-state">No readable resumes were found.</div>`; return; }
+
+    out.innerHTML = errors + filter + `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px; flex-wrap:wrap;">
+        <span class="job-meta">${d.results.length} resume(s) ranked for <strong>${escapeHtml(d.job_title)}</strong></span>
+        <button class="btn btn-sm btn-outline" onclick="exportBulkCsv()">Export CSV</button>
+      </div>
+      ${rows.length ? `<table>
+        <tr><th>Rank</th><th>Candidate</th><th>Match</th><th>Skills</th></tr>
+        ${rows.map(({ r, rank }) => `
+          <tr>
+            <td class="mono">#${rank}</td>
+            <td>${escapeHtml(r.name)}<br><span class="job-meta">${escapeHtml(r.email || r.filename)}</span></td>
+            <td>${scoreBarHtml(r.score)}</td>
+            <td>${skillTagsHtml(r.matched_skills, r.missing_skills, must)}</td>
+          </tr>`).join("")}
+      </table>` : `<div class="empty-state"><div class="icon">🔎</div>No resume meets every must-have skill.</div>`}`;
+  }
+
+  function csvCell(v) {
+    let t = String(v ?? "");
+    if (/^[=+\-@]/.test(t)) t = "'" + t;          // stops spreadsheet formula injection
+    return '"' + t.replace(/"/g, '""') + '"';
+  }
+
+  function exportBulkCsv() {
+    if (!bulkData) return;
+    const header = ["Rank", "Name", "Email", "File", "Score", "Matched skills", "Missing skills", "Missing must-have"];
+    const lines = [header.map(csvCell).join(",")];
+    bulkData.results.forEach((r, i) => lines.push([
+      i + 1, r.name, r.email, r.filename, r.score,
+      r.matched_skills.join("; "), r.missing_skills.join("; "), r.missing_must_have.join("; "),
+    ].map(csvCell).join(",")));
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "bulk_screening.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ---------- Candidate: Learning roadmap ----------
+  let roadmapJobsLoaded = false;
+
+  async function initRoadmap() {
+    const sel = document.getElementById("roadmap-target");
+    if (!roadmapJobsLoaded) {
+      try {
+        const jobs = await api("/api/candidate/open-jobs");
+        sel.innerHTML = `<option value="">All the jobs I applied to</option>` +
+          jobs.map(j => `<option value="${j.id}">${escapeHtml(j.title)}${j.company ? " — " + escapeHtml(j.company) : ""}</option>`).join("");
+        roadmapJobsLoaded = true;
+      } catch (e) { toast(e.message); }
+    }
+    loadRoadmap(sel.value);
+  }
+
+  async function loadRoadmap(jobId) {
+    const el = document.getElementById("roadmap-content");
+    el.innerHTML = `<div class="panel"><div class="empty-state">Building your roadmap...</div></div>`;
+    try {
+      const r = await api("/api/candidate/roadmap" + (jobId ? `?job_id=${jobId}` : ""));
+      renderRoadmap(r);
+    } catch (e) {
+      el.innerHTML = `<div class="panel"><div class="empty-state"><div class="icon">📄</div>${escapeHtml(e.message)}
+        <div style="margin-top:14px;"><button class="btn btn-sm" onclick="openResumeModal()">Upload resume</button></div></div></div>`;
+    }
+  }
+
+  function renderRoadmap(r) {
+    const el = document.getElementById("roadmap-content");
+    if (!r.phases.length) {
+      el.innerHTML = `<div class="panel"><div class="empty-state"><div class="icon">🎉</div>
+        ${r.target === "All your applications"
+          ? "Nothing to learn yet. Apply to a few jobs, or pick a job above, and your roadmap will appear here."
+          : "Your resume already covers every skill we detected for this job."}</div></div>`;
+      return;
+    }
+    const summary = `
+      <div class="rm-summary">
+        <span class="rm-pill">${r.skill_count} skill${r.skill_count !== 1 ? "s" : ""} to learn</span>
+        <span class="rm-pill">about ${r.total_weeks} weeks part-time</span>
+        <span class="rm-pill">${escapeHtml(r.target)}</span>
+      </div>
+      <p class="bulk-note">Time estimates are rough guesses for a beginner. Adjust them to your pace.</p>`;
+
+    el.innerHTML = summary + r.phases.map(p => `
+      <div class="panel">
+        <div class="panel-title">${escapeHtml(p.name)}</div>
+        ${p.steps.map(s => `
+          <div class="rm-step">
+            <div class="rm-step-head">
+              <div class="rm-skill">${escapeHtml(s.skill)}${s.is_prerequisite ? `<span class="rm-first">LEARN FIRST</span>` : ""}</div>
+              <span class="rm-weeks">~${s.weeks} week${s.weeks !== 1 ? "s" : ""}</span>
+            </div>
+            <p class="rm-why">${escapeHtml(s.reason)}</p>
+            <p class="rm-practice">🛠 <strong>Practice:</strong> ${escapeHtml(s.practice)}</p>
+            ${s.resources.length ? `<div style="display:flex; gap:8px; flex-wrap:wrap;">${s.resources.map(x => `
+              <a href="${escapeHtml(x.url)}" target="_blank" rel="noopener" class="skill-tag" style="background:var(--accent-soft); color:var(--accent); text-decoration:none;">
+                ${x.type === "YouTube" ? "▶" : "📄"} ${escapeHtml(x.title)}</a>`).join("")}</div>` : ""}
+          </div>`).join("")}
+      </div>`).join("");
+  }
+
+  // ---------- Candidate: Career Assistant Chat ----------
+  let chatLoaded = false;
+
+  function appendChatBubble(role, text) {
+    const el = document.getElementById("chat-messages");
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble " + (role === "user" ? "chat-bubble-user" : "chat-bubble-bot");
+    bubble.textContent = text;
+    el.appendChild(bubble);
+    el.scrollTop = el.scrollHeight;
+    return bubble;
+  }
+
+  async function loadChatHistory() {
+    if (chatLoaded) return; // only fetch once per session; new messages append live
+    chatLoaded = true;
+    try {
+      const history = await api("/api/candidate/chat/history");
+      if (history.length > 0) {
+        const el = document.getElementById("chat-messages");
+        el.innerHTML = "";
+        history.forEach(m => appendChatBubble(m.role, m.content));
+      }
+    } catch (e) { toast(e.message); }
+  }
+
+  function handleChatKeydown(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendChatMessage();
+    }
+  }
+
+  async function sendChatMessage() {
+    const input = document.getElementById("chat-input");
+    const message = input.value.trim();
+    if (!message) return;
+
+    appendChatBubble("user", message);
+    input.value = "";
+
+    const sendBtn = document.getElementById("chat-send-btn");
+    sendBtn.disabled = true;
+    const el = document.getElementById("chat-messages");
+    const loadingBubble = document.createElement("div");
+    loadingBubble.className = "chat-bubble-loading";
+    loadingBubble.textContent = "Thinking...";
+    el.appendChild(loadingBubble);
+    el.scrollTop = el.scrollHeight;
+
+    try {
+      const result = await api("/api/candidate/chat", { method: "POST", body: JSON.stringify({ message }) });
+      loadingBubble.remove();
+      appendChatBubble("model", result.reply);
+    } catch (e) {
+      loadingBubble.remove();
+      appendChatBubble("model", "⚠️ " + e.message);
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  async function clearChat() {
+    try {
+      await api("/api/candidate/chat/history", { method: "DELETE" });
+      document.getElementById("chat-messages").innerHTML =
+        `<div class="chat-bubble chat-bubble-bot">Hi! Paste a job description and I'll break down the required skills — or ask me anything about your resume or job search.</div>`;
+      toast("Chat cleared.");
+    } catch (e) { toast(e.message); }
+  }
+
+  // ---------- Boot ----------
+  window.addEventListener("load", async () => {
+    if (TOKEN) {
+      try {
+        const me = await api("/api/auth/me");
+        CURRENT_USER = { id: me.id, name: me.name, role: me.role, email: me.email };
+        enterApp();
+      } catch (e) {
+        localStorage.removeItem("hiresense_token");
+        TOKEN = null;
+      }
+    }
+  });
+</script>
+
+</body>
+</html>
