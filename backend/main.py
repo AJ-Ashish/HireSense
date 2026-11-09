@@ -49,7 +49,7 @@ from pydantic import BaseModel, EmailStr
 import database as db
 import auth
 from parser import extract_text, clean_text
-from ranker import score_resume, rank_resumes, get_model, extract_skills, embedding_backend, EmbeddingError
+from ranker import score_resume, rank_resumes, extract_skills, embedding_backend, EmbeddingError
 from roadmap import build_roadmap
 import ats
 from resources import get_resources_for_skill
