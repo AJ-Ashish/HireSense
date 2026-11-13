@@ -104,16 +104,7 @@ convenient for testing.
 
 ## Setting up the Career Assistant chatbot (Gemini API)
 
-The chatbot needs a free Gemini API key:
 
-1. Get one from [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) (free, no credit card — see setup guide if needed)
-2. In the same `.env` file from above, replace `your_gemini_api_key_here` with your real key
-3. Also set `JWT_SECRET` in the same file to a long random string (generate one with `python -c "import secrets; print(secrets.token_hex(32))"`)
-4. Save — the server reads it automatically on startup (via python-dotenv)
-
-**Never commit your `.env` file** — it's already in `.gitignore` so it won't
-accidentally get pushed to GitHub. If you skip the Gemini setup, every other
-feature still works fine — only the Career Assistant chat will show an error.
 
 ## Running locally
 
